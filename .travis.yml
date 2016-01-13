@@ -12,8 +12,10 @@ addons:
     - g++-4.8
 
 before_install:
+- sudo add-apt-repository ppa:dns/gnu -y
 - sudo apt-get -qq update
 install:
-- sudo apt-get install -qq autoconf automake libtool pkg-config check
+- sudo apt-get install --only-upgrade autoconf
+- sudo apt-get install automake libtool pkg-config check
 - ./autogen.sh
 
