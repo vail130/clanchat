@@ -3,6 +3,7 @@
 ## Setup
 
 ```sh
+./autogen.sh
 ./configure && make
 ```
 
