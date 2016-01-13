@@ -1,3 +1,4 @@
+ar-lib
 /autom4te.cache/
 /config/
 Makefile
@@ -9,12 +10,15 @@ config.h
 config.h.in
 config.log
 config.status
+config.guess
+config.sub
 configure
 configure.scan
 coverage_report
 depcomp
 install-sh
 libtool
+ltmain.sh
 m4
 missing
 stamp-h1
@@ -26,9 +30,18 @@ stamp-h1
 *.so*
 *.a
 .deps
+.libs
 *.tar*
 *.zip
 *.lo
 *.gcno
 *.gcda
+*.log
+test-driver
+*.trs
+
+# Generated binaries
+src/clanchat
+tests/check_*
+!tests/check_*.c
 

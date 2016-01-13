@@ -1,21 +1,23 @@
 #include <check.h>
+#include <stdlib.h>
 
 #include "../src/clanchat.h"
 
-START_TEST(test_clanchat)
+START_TEST(test_error_if_name_empty)
 {
-
+    int retval = clanchat("");
+    ck_assert_msg (retval == -1, "Empty name should be an error.");
 }
 END_TEST
 
-Suite * filesearch_suite (void) {
+Suite * clanchat_suite (void) {
     Suite *s;
     TCase *tc_core;
 
-    s = suite_create("Filesearch");
+    s = suite_create("Clanchat");
     tc_core = tcase_create("Core");
 
-    tcase_add_test(tc_core, test_clanchat);
+    tcase_add_test(tc_core, test_error_if_name_empty);
     suite_add_tcase(s, tc_core);
 
     return s;
@@ -26,7 +28,7 @@ int main (void) {
     Suite *s;
     SRunner *sr;
 
-    s = filesearch_suite();
+    s = clanchat_suite();
     sr = srunner_create(s);
 
     srunner_run_all(sr, CK_NORMAL);
