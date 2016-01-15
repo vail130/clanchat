@@ -4,5 +4,5 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src . tests
 
 test:
-	make check
+	./scripts/run-tests.sh
 
