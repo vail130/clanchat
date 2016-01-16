@@ -17,5 +17,6 @@ before_install:
 install:
 - sudo apt-get install --only-upgrade autoconf
 - sudo apt-get install automake libtool pkg-config check
+- sudo apt-get install libmicrohttpd-dev libossp-uuid-dev curl
 - ./autogen.sh
 
