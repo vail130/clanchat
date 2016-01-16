@@ -10,7 +10,7 @@
 ## Run Tests
 
 ```sh
-make check
+make test
 ```
 
 ## Install
