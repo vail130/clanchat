@@ -15,12 +15,12 @@
 
 #define BUFSIZE 4096    /* Should be enough to capture a whole line of output from "arp -a" */
 
-pid_t pid;
+pid_t bg_server_pid;
 
 volatile sig_atomic_t done = 0;
  
 void term(int signum) {
-    kill(pid, SIGTERM);
+    kill(bg_server_pid, SIGTERM);
 }
 
 void register_sigterm_handler() {
@@ -28,6 +28,22 @@ void register_sigterm_handler() {
     memset(&action, 0, sizeof(struct sigaction));
     action.sa_handler = term;
     sigaction(SIGTERM, &action, NULL);
+}
+
+int run_server_in_child_process(ClanchatConfig opts) {
+    bg_server_pid = fork();
+    if (bg_server_pid == 0) {
+        /* Child process */
+        ClanchatConfig server_opts = { opts.name, opts.id, SERVER_MODE };
+        return clanchat(server_opts);
+    } else if (bg_server_pid < 0) {
+        /* Failure */
+        fprintf(stderr, "Fork failure.");
+        return EXIT_FAILURE;
+    }
+
+    register_sigterm_handler();
+    return EXIT_SUCCESS;
 }
 
 int load_arp_output(char ** arp_output) {
@@ -39,11 +55,11 @@ int load_arp_output(char ** arp_output) {
     }
 
     char buf[BUFSIZE];
-    if (*arp_output == NULL) {
-        *arp_output = malloc(0);
-    }
-
     while (fgets(buf, BUFSIZE, fp) != NULL) {
+        /* Lines look like this (without surrouding quotation marks):
+         * "? (192.168.0.1) at 14:cf:e2:ab:a7:97 on en0 ifscope [ethernet]"
+         * "? (192.168.33.255) at (incomplete) on vboxnet0 ifscope [ethernet]"
+         */
         *arp_output = realloc(*arp_output, sizeof(char) * (strlen(*arp_output) + strlen(buf)));
         strcat(*arp_output, buf);
     }
@@ -99,11 +115,6 @@ int extract_ip_addresses_from_arp_output(char * arp_output, char ** ip_address_l
         memset(arp_output, 0, sizeof(char) * strlen(arp_output));
         strcpy(arp_output, arp_remaining);
         
-        /*
-         * "? (192.168.0.1) at 14:cf:e2:ab:a7:97 on en0 ifscope [ethernet]"
-         * "? (192.168.33.255) at (incomplete) on vboxnet0 ifscope [ethernet]"
-         */
-
         reti = regexec(&regex, arp_output_line, ngroups, groups, 0);
         if (reti != 0) {
             continue;
@@ -111,8 +122,6 @@ int extract_ip_addresses_from_arp_output(char * arp_output, char ** ip_address_l
         
         char ip[15]; /* IPv4 string is max 15 characters */
         strncpy(ip, arp_output_line + groups[1].rm_so, groups[1].rm_eo - groups[1].rm_so);
-        
-        printf("Matching IP: %s\n", ip);
         
         if (strlen(*ip_address_list) == 0) {
             *ip_address_list = realloc(*ip_address_list, sizeof(char) * strlen(ip));
@@ -170,29 +179,16 @@ int clanchat(ClanchatConfig opts) {
         return EXIT_FAILURE;
     }
     
-    if (opts.mode != CLIENT_MODE && opts.mode != SERVER_MODE) {
+    if (opts.mode == SERVER_MODE) {
+        return clanchat_api_serve(opts);
+    } else if (opts.mode != CLIENT_MODE) {
         fprintf(stderr, "Invalid mode: \"%d\"\n", opts.mode);
         return EXIT_FAILURE;
     }
-
-    if (opts.mode == SERVER_MODE) {
-        return clanchat_api_serve(opts);
-    }
     
     /* CLIENT_MODE */
-    pid = fork();
-    if (pid == 0) {
-        /* Child process */
-        ClanchatConfig server_opts = { opts.name, opts.id, SERVER_MODE };
-        return clanchat(server_opts);
-    } else if (pid < 0) {
-        /* Failure */
-        fprintf(stderr, "Fork failure.");
-        return EXIT_FAILURE;
-    }
-    
-    /* Parent process */
-    register_sigterm_handler();
+
+    run_server_in_child_process(opts);
     register_lan_clients();
     
     /* TODO: Read commands from stdin and parse them */

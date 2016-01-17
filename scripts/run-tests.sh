@@ -9,6 +9,7 @@ function reset_current_directory {
     popd
     if [ ! -z $PID ]; then
         kill $PID
+        kill -9 $PID 2> /dev/null # Just in case
     fi
 }
 trap reset_current_directory EXIT
@@ -43,5 +44,7 @@ make check
 
 # Kill background test server without error
 kill $PID 2> /dev/null
+# If it's still there, really kill it without error
+kill -9 $PID 2> /dev/null
 PID=
 
