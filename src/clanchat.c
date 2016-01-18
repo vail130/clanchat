@@ -190,17 +190,20 @@ int clanchat(ClanchatConfig opts) {
 
     run_server_in_child_process(opts);
     register_lan_clients();
+
+    /* TODO: Run register_lan_clients in the background
+     * in a sleeping loop and print notifications to stdout
+     */
     
-    /* TODO: Read commands from stdin and parse them */
-    
-    /*
+    /* TODO: Read commands from stdin and parse them
      * help: Display commands and descriptions
      * users: List available users
      * msg [USER]: Send a message to a user
+     * exit: End program
      */
 
     while (1) {}
-    
+
     return EXIT_SUCCESS;
 }
 
