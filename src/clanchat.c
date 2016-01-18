@@ -168,6 +168,99 @@ int register_lan_clients() {
     return ret_status;
 }
 
+int listen_for_user_commands(ClanchatConfig opts) {
+    printf("clanchat: %s> ", opts.name);
+    fflush(stdout);
+
+    char * raw_cmd = malloc(0);
+    char * cmd = malloc(0);
+    int raw_cmd_is_empty = 1;
+    char buffer[4 * sizeof(char)];
+    memset(buffer, 0, sizeof(buffer));
+    
+    while (read(STDIN_FILENO, buffer, sizeof(buffer)) > 0) {
+        /* Add buffer contents to raw_cmd */
+        if (raw_cmd_is_empty) {
+            raw_cmd = realloc(raw_cmd, sizeof(char) * strlen(buffer));
+            strcpy(raw_cmd, buffer);
+            raw_cmd_is_empty = 0;
+        } else {
+            raw_cmd = realloc(raw_cmd, sizeof(char) * (strlen(raw_cmd) + strlen(buffer)));
+            strcat(raw_cmd, buffer);
+        }
+       
+        /* Clear buffer for next iteration */
+        memset(buffer, 0, sizeof(buffer));
+
+        /* Remove trailing EOT from raw_cmd */
+        if (raw_cmd[strlen(raw_cmd)-1] == '\x04') {
+            /* Copy raw_cmd to cmd without EOT */
+            memset(cmd, 0, sizeof(char) * strlen(cmd));
+            cmd = realloc(cmd, sizeof(char) * (strlen(raw_cmd) - 1));
+            strncpy(cmd, raw_cmd, strlen(raw_cmd) - 1);
+            /* Copy cmd back to raw_cmd */
+            memset(raw_cmd, 0, sizeof(char) * strlen(raw_cmd));
+            raw_cmd = realloc(raw_cmd, sizeof(char) * strlen(cmd));
+            strncpy(raw_cmd, cmd, strlen(cmd));
+        }
+
+        /* If raw_cmd does not end with new line, keep reading from stdin */
+        int new_line_position = strcspn(raw_cmd, "\r\n");
+        if (new_line_position == strlen(raw_cmd)) {
+            continue;
+        }
+        
+        /* Copy everything except last character (\n) from raw_cmd to cmd */
+        memset(cmd, 0, sizeof(char) * strlen(cmd));
+        cmd = realloc(cmd, sizeof(char) * new_line_position);
+        strncpy(cmd, raw_cmd, new_line_position);
+
+        /* Clear raw_cmd for next iteration */
+        memset(raw_cmd, 0, sizeof(char) * strlen(raw_cmd));
+        raw_cmd_is_empty = 1;
+
+        /* Parse cmd */
+        if (strcmp(cmd, "help") == 0) {
+            printf(
+                    "Usage: command [args...]\n"
+                    "Commands:\n"
+                    "\thelp: List commands and descriptions\n"
+                    "\tusers: List available users\n"
+                    "\tmsg USER: Send a message to USER\n"
+                    "\texit: End clanchat session\n"
+                    );
+            printf("clanchat: %s> ", opts.name);
+            fflush(stdout);
+        } else if (strcmp(cmd, "users") == 0) {
+            /* TODO */
+            printf("Command \"users\" not yet implemented...");
+            fflush(stdout);
+        } else if (strncmp(cmd, "msg ", 4) == 0) {
+            /* TODO */
+            printf("Command \"msg\" not yet implemented...");
+            fflush(stdout);
+        } else if (strcmp(cmd, "exit") == 0) {
+            printf("Shutting down clanchat server and exiting...");
+            fflush(stdout);
+            kill(bg_server_pid, SIGTERM);
+            goto cleanup_before_exit;
+        } else {
+            printf("Invalid command: \"%s\". For usage, type \"help\".\n", cmd);
+            printf("clanchat: %s> ", opts.name);
+            fflush(stdout);
+        }
+        
+        /* Clear cmd for next iteration */
+        memset(cmd, 0, sizeof(char) * strlen(cmd));
+    }
+
+    cleanup_before_exit:
+        free(raw_cmd);
+        free(cmd);
+
+    return EXIT_SUCCESS;
+}
+
 int clanchat(ClanchatConfig opts) {
     if (strlen(opts.name) < 1) {
         fprintf(stderr, "Name must not be empty.\n");
@@ -189,21 +282,16 @@ int clanchat(ClanchatConfig opts) {
     /* CLIENT_MODE */
 
     run_server_in_child_process(opts);
+    if (bg_server_pid == 0) {
+        return EXIT_SUCCESS;
+    }
+
     register_lan_clients();
 
     /* TODO: Run register_lan_clients in the background
      * in a sleeping loop and print notifications to stdout
      */
     
-    /* TODO: Read commands from stdin and parse them
-     * help: Display commands and descriptions
-     * users: List available users
-     * msg [USER]: Send a message to a user
-     * exit: End program
-     */
-
-    while (1) {}
-
-    return EXIT_SUCCESS;
+    return listen_for_user_commands(opts);
 }
 
